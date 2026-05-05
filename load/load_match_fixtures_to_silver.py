@@ -16,9 +16,9 @@ def get_db_connection():
         port=os.getenv("DB_PORT")
     )
 
+
 def get_latest_bronze_file(dataset_name):
     bronze_path = Path("data/bronze/football_api")
-
     files = list(bronze_path.rglob(f"{dataset_name}/*.json"))
 
     if not files:
@@ -32,16 +32,14 @@ def load_json_file(file_path):
         return json.load(file)
 
 
-def insert_result(cursor, match):
+def insert_fixture(cursor, match):
     competition = match.get("competition", {})
     season = match.get("season", {})
     home_team = match.get("homeTeam", {})
     away_team = match.get("awayTeam", {})
-    score = match.get("score", {})
-    full_time = score.get("fullTime", {})
 
     sql = """
-        INSERT INTO silver.results (
+        INSERT INTO silver.fixtures (
             match_id,
             competition_code,
             competition_name,
@@ -52,9 +50,6 @@ def insert_result(cursor, match):
             home_team_name,
             away_team_id,
             away_team_name,
-            home_score,
-            away_score,
-            winner,
             last_updated
         )
         VALUES (
@@ -68,19 +63,10 @@ def insert_result(cursor, match):
             %(home_team_name)s,
             %(away_team_id)s,
             %(away_team_name)s,
-            %(home_score)s,
-            %(away_score)s,
-            %(winner)s,
             %(last_updated)s
         )
         ON CONFLICT (match_id)
-        DO UPDATE SET
-            status = EXCLUDED.status,
-            home_score = EXCLUDED.home_score,
-            away_score = EXCLUDED.away_score,
-            winner = EXCLUDED.winner,
-            last_updated = EXCLUDED.last_updated,
-            loaded_at = CURRENT_TIMESTAMP;
+        DO NOTHING;
     """
 
     values = {
@@ -94,42 +80,43 @@ def insert_result(cursor, match):
         "home_team_name": home_team.get("name"),
         "away_team_id": away_team.get("id"),
         "away_team_name": away_team.get("name"),
-        "home_score": full_time.get("home"),
-        "away_score": full_time.get("away"),
-        "winner": score.get("winner"),
         "last_updated": match.get("lastUpdated")
     }
 
     cursor.execute(sql, values)
 
 
-def load_results_to_silver(file_path):
+def load_fixtures_to_silver(file_path):
     data = load_json_file(file_path)
 
     if "matches" not in data:
-        raise ValueError("This is not a results file. Expected key 'matches'.")
-
-    print("Loading file:", file_path)
-    print("Number of matches:", len(data["matches"]))
+        raise ValueError("This is not a fixtures file. Expected key 'matches'.")
 
     connection = get_db_connection()
     cursor = connection.cursor()
 
+    inserted_or_skipped = 0
+
     try:
         for match in data["matches"]:
-            insert_result(cursor, match)
+            status = match.get("status")
+
+            if status != "FINISHED":
+                insert_fixture(cursor, match)
+                inserted_or_skipped += 1
 
         connection.commit()
-        print(f"Loaded {len(data['matches'])} matches into silver.results")
+        print(f"Processed {inserted_or_skipped} upcoming fixtures into silver.fixtures")
 
     except Exception as error:
         connection.rollback()
-        print("Failed to load results:", error)
+        print("Failed to load fixtures:", error)
 
     finally:
         cursor.close()
         connection.close()
 
+
 if __name__ == "__main__":
     latest_file = get_latest_bronze_file("results")
-    load_results_to_silver(latest_file)
+    load_fixtures_to_silver(latest_file)
