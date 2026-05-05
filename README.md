@@ -1,5 +1,5 @@
 # Football_stats_ETL
-
+“The pipeline uses different loading strategies depending on the data type. Fixtures and results are loaded incrementally using match IDs and updated timestamps, while league standings are captured as full weekly snapshots because table positions and points are state-based and change over time.”
                     ┌────────────────────┐
                     │   Football API      │
                     └─────────┬──────────┘
@@ -46,3 +46,15 @@
               ┌──────────────────────┐
               │ Dashboard / Queries  │
               └──────────────────────┘
+
+[ SOURCE ]
+     ↓
+[ EXTRACT ]
+     ↓
+[ BRONZE (RAW) ]
+     ↓
+[ TRANSFORM ]
+     ↓
+[ SILVER (CLEAN) ]
+     ↓
+[ GOLD (ANALYTICS) ]
