@@ -23,7 +23,7 @@ def save_json_to_bronze(data: json, dataset_name: str, competition_name: str, se
 
     folder_path = (f"data/bronze/{competition_name}/{season}/{dataset_name}")
     
-    file_name = (f"{competition_name}_{dataset_name}_on_{date}.json")
+    file_name = (f"{date}_{competition_name}_{dataset_name}.json")
 
     file_path = f"{folder_path}/{file_name}"
 
