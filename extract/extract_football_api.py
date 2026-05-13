@@ -27,14 +27,14 @@ def save_json_to_bronze(data: json, dataset_name: str, competition_name: str, se
 
     file_path = f"{folder_path}/{file_name}"
 
-    os.makedirs(folder_path, exist_ok=True)
+    os.makedirs(folder_path, exist_ok = True)
 
-    with open(file_path, "w", encoding="utf-8") as file:
+    with open(file_path, "w", encoding = "utf-8") as file:
         json.dump(data, file, indent=4)
 
     print(f"Saved bronze {dataset_name} file: {file_path}\n")
 
-def fetch_from_api(endpoint: str, params=None):
+def fetch_from_api(endpoint: str, params = None):
     """
     Fetches data from the football api\n
     Takes a url endpoint and a parameter\n\n
@@ -46,7 +46,7 @@ def fetch_from_api(endpoint: str, params=None):
 
     headers = {"X-Auth-Token": API_KEY}
     url = f"{BASE_URL}/{endpoint}"
-    response = requests.get(url, headers=headers, params=params)
+    response = requests.get(url, headers = headers, params = params)
 
     print("Request URL:", response.url)
     print("Status Code:", response.status_code)
@@ -55,35 +55,29 @@ def fetch_from_api(endpoint: str, params=None):
     return response.json()
 
 #http://api.football-data.org/v4/competitions/2003/matches?matchday=1"
-def extract_all_matches():
+def extract_matches():
+    """
+    Extracts matche data for the next upcoming 7 days
+    """
+    date = datetime.now()
+    strfdate_from = date.strftime("%Y-%m-%d")
+    strfdate_to = (date +timedelta(days = 7)).strftime("%Y-%m-%d")
+
     data = fetch_from_api(
-        endpoint=f"competitions/{COMPETITION_CODE}/matches",
-        params={"season": SEASON}
+        endpoint = f"competitions/{COMPETITION_CODE}/matches",
+        params = {"season": SEASON,"dateFrom":strfdate_from,"dateTo":strfdate_to }
         )
 
     save_json_to_bronze(data, "Matches", COMPETITION_NAME, SEASON)
 
-def extract_match_data(status :str, dataset_name :str):
-    date = datetime.now()
-    date_from = date.strftime("%Y-%m-%d")
-    date_to = date + timedelta(days = 7)
-
-    data = fetch_from_api(
-        endpoint=f"competitions/{COMPETITION_CODE}/matches",
-        params={"dateFrom":date_from,"dateTo":date_to.strftime("%Y-%m-%d"),"status":status}
-        )
-    
-    save_json_to_bronze(data, dataset_name,COMPETITION_NAME,SEASON)
 
 # http://api.football-data.org/v4/competitions/PL/standings
 def extract_standings():
-    data = fetch_from_api( endpoint=f"competitions/{COMPETITION_CODE}/standings")
+    data = fetch_from_api( endpoint = f"competitions/{COMPETITION_CODE}/standings")
 
     save_json_to_bronze(data, "Standings", COMPETITION_NAME, SEASON)
 
 
 if __name__ == "__main__":
-    extract_all_matches()
-    extract_match_data("SCHEDULED", "Fixtures")
-    extract_match_data("FINISHED", "Results")
+    extract_matches()
     extract_standings()
