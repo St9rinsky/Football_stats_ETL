@@ -57,11 +57,11 @@ def fetch_from_api(endpoint: str, params = None):
 #http://api.football-data.org/v4/competitions/2003/matches?matchday=1"
 def extract_matches():
     """
-    Extracts matche data for the next upcoming 7 days
+    Extracts matche data for the next upcoming 7 days and previous 7 days
     """
     date = datetime.now()
-    strfdate_from = date.strftime("%Y-%m-%d")
-    strfdate_to = (date +timedelta(days = 7)).strftime("%Y-%m-%d")
+    strfdate_from = (date - timedelta(days = 7)).strftime("%Y-%m-%d")
+    strfdate_to = (date + timedelta(days = 7)).strftime("%Y-%m-%d")
 
     data = fetch_from_api(
         endpoint = f"competitions/{COMPETITION_CODE}/matches",
