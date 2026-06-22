@@ -28,5 +28,22 @@ def setup_silver_tables():
         cursor.close()
         connection.close()
 
+def setup_gold_tables():
+    connection = db_connect()
+    cursor = connection.cursor()
+
+    try:
+        with open("database/gold_tables.sql") as f:
+            cursor.execute(f.read())
+
+        connection.commit()
+
+    finally:
+        cursor.close()
+        connection.close()
+
 if __name__ == "__main__":
+    setup_schema()
     setup_silver_tables()
+    setup_gold_tables()
+
