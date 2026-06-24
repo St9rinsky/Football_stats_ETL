@@ -1,69 +1,74 @@
+-- Active: 1782061921007@@127.0.0.1@5432@Football_stats
 CREATE MATERIALIZED VIEW gold.current_standings AS
 WITH team_results AS (
 
     SELECT
-        home_team_id AS team_id,
-        home_goals AS goals_for,
-        away_goals AS goals_against,
+        t.team_name AS team_name,
+        m.home_goals AS goals_for,
+        m.away_goals AS goals_against,
 
         CASE 
-            WHEN home_goals > away_goals THEN 1
+            WHEN m.home_goals > m.away_goals THEN 1
             ELSE 0
         END AS wins,
 
         CASE 
-            WHEN home_goals = away_goals THEN 1
+            WHEN m.home_goals = m.away_goals THEN 1
             ELSE 0
         END AS draws,
 
         CASE 
-            WHEN home_goals < away_goals THEN 1
+            WHEN m.home_goals < m.away_goals THEN 1
             ELSE 0
         END AS losses,
 
         CASE
-            WHEN home_goals > away_goals THEN 3
-            WHEN home_goals = away_goals THEN 1
+            WHEN m.home_goals > m.away_goals THEN 3
+            WHEN m.home_goals = m.away_goals THEN 1
             ELSE 0
         END AS points
 
-    FROM silver.matches
+    FROM silver.matches m
+    INNER JOIN silver.teams t 
+    ON m.home_team_id = t.team_id
     WHERE status = 'FINISHED'
 
 
     UNION ALL
 
     SELECT
-        away_team_id AS team_id,
-        away_goals AS goals_for,
-        home_goals AS goals_against,
+        t.team_name AS team_name,
+        m.away_goals AS goals_for,
+        m.home_goals AS goals_against,
 
         CASE 
-            WHEN away_goals > home_goals THEN 1
+            WHEN m.away_goals > m.home_goals THEN 1
             ELSE 0
         END AS wins,
 
         CASE 
-            WHEN away_goals = home_goals THEN 1
+            WHEN m.away_goals = m.home_goals THEN 1
             ELSE 0
         END AS draws,
 
         CASE 
-            WHEN away_goals < home_goals THEN 1
+            WHEN m.away_goals < m.home_goals THEN 1
             ELSE 0
         END AS losses,
 
         CASE
-            WHEN away_goals > home_goals THEN 3
-            WHEN away_goals = home_goals THEN 1
+            WHEN m.away_goals > m.home_goals THEN 3
+            WHEN m.away_goals = m.home_goals THEN 1
             ELSE 0
         END AS points
 
-    FROM silver.matches
+    FROM silver.matches m
+    INNER JOIN silver.teams t 
+    ON m.away_team_id = t.team_id
     WHERE status = 'FINISHED'
 )
 SELECT
-    team_id,
+    team_name,
 
     COUNT(*) AS played,
 
@@ -77,4 +82,4 @@ SELECT
     SUM(points) AS points
 
 FROM team_results
-GROUP BY team_id;
+GROUP BY team_name;
