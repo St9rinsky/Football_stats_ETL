@@ -1,0 +1,91 @@
+from database.connection import db_connect 
+from silver.helpers import read_json_file, extract_latest_bronze_file
+
+def extract_players(data :dict):
+    players = []
+    if "matches" not in data:
+        raise ValueError("no matches in data")
+
+    if data.get("resultSet",{}).get("count",0) <= 0:
+        print("no dataset")
+        return players
+    
+    for match in data.get("matches",[]):
+        status = match.get("status")
+
+
+        if status == "FINISHED":
+            if match.get("score",{}).get("fullTime",{}).get("home",0) == 0 and match.get("score",{}).get("fullTime",{}).get("away",0) == 0:
+                    continue
+            
+            goals = match.get("goals",[])
+            for goal in goals:
+                player_id = goal.get("scorer",{}).get("id")
+                assist_id =  goal.get("assist",{}).get("id")
+
+                if player_id:
+                    players.append({
+                        "team_id" : goal.get("team",{}).get("id"),
+                        "player_id": player_id,
+                        "player_name": goal.get("scorer",{}).get("name")})
+
+                if assist_id:
+                    players.append({
+                        "team_id" : goal.get("team",{}).get("id"),
+                        "player_id": assist_id,
+                        "player_name": goal.get("assist",{}).get("name")})
+    return players
+
+
+def load_players_to_silverDB(players :dict):
+    try:
+        connection = db_connect()
+        cursor = connection.cursor()
+
+        inserted_players = 0
+
+        for player in players:
+            sql = """
+            INSERT INTO silver.players (
+                player_id,
+                player_name,
+                team_id
+            )
+
+            VALUES (
+                %(player_id)s,
+                %(player_name)s,
+                %(team_id)s
+            )
+
+            ON CONFLICT (player_id)
+            DO UPDATE SET
+                player_name = EXCLUDED.player_name,
+                team_id = EXCLUDED.team_id
+            WHERE silver.players.player_name <> EXCLUDED.player_name
+            OR silver.players.team_id <> EXCLUDED.team_id;
+            """
+
+            cursor.execute(sql, player)
+            inserted_players += 1
+
+        connection.commit()
+        print(f"{inserted_players} new players")
+    
+    except Exception as error:
+        connection.rollback()
+        print("Failed to save players", error)
+
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def main():
+    file = extract_latest_bronze_file(Season = 2025, Competition_name = "premier_league", folder_name = "Matches")
+    data = read_json_file(file)
+    players = extract_players(data)
+    load_players_to_silverDB(players)
+
+if __name__ == "__main__":
+    main()
